@@ -1,17 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/topic.dart';
-import '../models/question.dart';
-import '../widgets/flash_card.dart';
-import '../widgets/example_card.dart';
-import '../widgets/story_card.dart';
-import '../widgets/games/multiple_choice_game.dart';
-import '../widgets/games/matching_game.dart';
-import '../widgets/games/fill_blank_game.dart';
-import '../widgets/dragon_boss.dart';
-import '../widgets/summary_card.dart';
+import '../models/word.dart';
 import '../services/tts_service.dart';
 
-/// Màn hình học bài với TikTok-style vertical swipe
+/// Màn hình học từ vựng với thiết kế mới
 class LessonScreen extends StatefulWidget {
   final Lesson lesson;
 
@@ -24,95 +17,14 @@ class LessonScreen extends StatefulWidget {
 class _LessonScreenState extends State<LessonScreen> {
   late PageController _pageController;
   final TtsService _tts = TtsService();
-  int _currentPage = 0;
-  int _score = 0;
-  int _totalQuestions = 0;
-  int _correctAnswers = 0;
-  int _bossHealth = 100;
-  int _playerHealth = 100;
-
-  // Tính tổng số trang
-  int get _totalPages {
-    // 5 flashcards + examples + story + 3 games + boss battle + summary
-    return widget.lesson.words.length +
-        widget.lesson.examples.length +
-        1 + // story
-        3 + // games
-        1 + // boss battle
-        1; // summary
-  }
+  int _currentIndex = 0;
+  final Set<int> _likedWords = {};
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _totalQuestions = widget.lesson.questions.length + 5;
-
-    // Speak first word khi TTS sẵn sàng
-    _speakFirstWord();
-  }
-
-  Future<void> _speakFirstWord() async {
-    // Chỉ speak nếu TTS đã ready
-    if (!_tts.isReady) return;
-
-    if (mounted && widget.lesson.words.isNotEmpty) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      _speak(widget.lesson.words[0].korean);
-    }
-  }
-
-  Future<void> _speak(String text) async {
-    await _tts.speak(text);
-  }
-
-  void _onPageChanged(int page) {
-    setState(() {
-      _currentPage = page;
-    });
-
-    // Auto-speak based on current page content
-    _speakCurrentPage(page);
-  }
-
-  void _speakCurrentPage(int page) {
-    final wordsCount = widget.lesson.words.length;
-    final examplesCount = widget.lesson.examples.length;
-
-    if (page < wordsCount) {
-      // FlashCard - speak Korean word
-      _speak(widget.lesson.words[page].korean);
-    } else if (page < wordsCount + examplesCount) {
-      // Example - speak Korean sentence
-      final exampleIndex = page - wordsCount;
-      _speak(widget.lesson.examples[exampleIndex].korean);
-    } else if (page == wordsCount + examplesCount) {
-      // Story - speak story
-      _speak(widget.lesson.story);
-    }
-  }
-
-  void _onAnswerCorrect() {
-    setState(() {
-      _score += 10;
-      _correctAnswers++;
-      _bossHealth = (_bossHealth - 20).clamp(0, 100);
-    });
-  }
-
-  void _onAnswerWrong() {
-    setState(() {
-      _playerHealth = (_playerHealth - 15).clamp(0, 100);
-    });
-  }
-
-  void _goToNextPage() {
-    if (_currentPage < _totalPages - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+    _speakCurrentWord();
   }
 
   @override
@@ -122,278 +34,324 @@ class _LessonScreenState extends State<LessonScreen> {
     super.dispose();
   }
 
+  void _speakCurrentWord({double rate = 0.5}) {
+    if (_tts.isReady && widget.lesson.words.isNotEmpty) {
+      _tts.speak(widget.lesson.words[_currentIndex].korean);
+    }
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    _speakCurrentWord();
+  }
+
+  void _toggleLike() {
+    setState(() {
+      if (_likedWords.contains(_currentIndex)) {
+        _likedWords.remove(_currentIndex);
+      } else {
+        _likedWords.add(_currentIndex);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Progress bar and close button
-              _buildHeader(),
+    final word = widget.lesson.words[_currentIndex];
+    final totalWords = widget.lesson.words.length;
 
-              // Main content - PageView
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  scrollDirection: Axis.vertical,
-                  onPageChanged: _onPageChanged,
-                  itemCount: _totalPages,
-                  itemBuilder: (context, index) {
-                    return _buildPage(index);
-                  },
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background với blur effect
+          _buildBlurredBackground(word),
+
+          // Nội dung chính
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                _buildHeader(),
+
+                // PageView cho từ vựng
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    onPageChanged: _onPageChanged,
+                    itemCount: totalWords,
+                    itemBuilder: (context, index) {
+                      return _buildWordCard(widget.lesson.words[index]);
+                    },
+                  ),
+                ),
+
+                // Bottom hint
+                _buildBottomHint(),
+              ],
+            ),
+          ),
+
+          // Action buttons - Neo cố định bên phải
+          Positioned(
+            right: 16,
+            top: 0,
+            bottom: 0,
+            child: SafeArea(child: Center(child: _buildFixedActionButtons())),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlurredBackground(Word word) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          word.imagePath,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF2d1f3d), Color(0xFF1a1a2e)],
                 ),
               ),
-
-              // Swipe hint
-              _buildSwipeHint(),
-            ],
-          ),
+            );
+          },
         ),
-      ),
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          child: Container(color: Colors.black.withValues(alpha: 0.5)),
+        ),
+      ],
     );
   }
 
   Widget _buildHeader() {
+    final progress = (_currentIndex + 1) / widget.lesson.words.length;
+
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
         children: [
-          // Close button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF4A90D9),
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 24),
+              minHeight: 4,
             ),
           ),
-          const SizedBox(width: 16),
-          // Progress bar
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.lesson.name,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: (_currentPage + 1) / _totalPages,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF00d9ff),
-                    ),
-                    minHeight: 8,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Score
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFe94560).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.star, color: Color(0xFFffd700), size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  '$_score',
+              ),
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Lesson ${widget.lesson.lessonNumber}: ${widget.lesson.name}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Card từ vựng - không chứa action buttons nữa
+  Widget _buildWordCard(Word word) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+      ), // right padding cho action buttons
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Image card
+          Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
+                word.imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Icon(
+                      Icons.image_not_supported,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Korean word
+          Text(
+            word.korean,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Romanization
+          Text(
+            word.romanization,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 20,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Divider
+          Container(
+            width: 100,
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+
+          // Vietnamese meaning
+          Text(
+            word.vietnamese,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSwipeHint() {
-    if (_currentPage >= _totalPages - 1) return const SizedBox.shrink();
+  /// Action buttons cố định bên phải
+  Widget _buildFixedActionButtons() {
+    final isLiked = _likedWords.contains(_currentIndex);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Like button
+        _buildActionButton(
+          icon: Icon(
+            isLiked ? Icons.favorite : Icons.favorite_border,
+            color: isLiked ? Colors.red : Colors.white,
+            size: 28,
+          ),
+          onTap: _toggleLike,
+        ),
+        const SizedBox(height: 28),
+
+        // Normal speed button
+        _buildActionButton(
+          icon: const Icon(Icons.volume_up, color: Colors.white, size: 28),
+          onTap: () => _speakCurrentWord(rate: 0.5),
+        ),
+        const SizedBox(height: 28),
+
+        // Slow speed button
+        _buildActionButton(
+          icon: const Icon(
+            Icons.slow_motion_video,
+            color: Colors.white,
+            size: 28,
+          ),
+          onTap: () => _speakCurrentWord(rate: 0.3),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required Widget icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          shape: BoxShape.circle,
+        ),
+        child: icon,
+      ),
+    );
+  }
+
+  Widget _buildBottomHint() {
+    if (_currentIndex >= widget.lesson.words.length - 1) {
+      return const SizedBox(height: 60);
+    }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.all(16),
+      child: Column(
         children: [
+          const SizedBox(height: 4),
           Icon(
-            Icons.swipe_up,
-            color: Colors.white.withValues(alpha: 0.5),
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Lướt lên để tiếp tục',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
-            ),
+            Icons.keyboard_arrow_up,
+            color: Colors.white.withValues(alpha: 0.6),
+            size: 24,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPage(int index) {
-    final wordsCount = widget.lesson.words.length;
-    final examplesCount = widget.lesson.examples.length;
-    final storyIndex = wordsCount + examplesCount;
-    final gamesStartIndex = storyIndex + 1;
-    final bossIndex = gamesStartIndex + 3;
-    final summaryIndex = bossIndex + 1;
-
-    // FlashCards (pages 0 to wordsCount-1)
-    if (index < wordsCount) {
-      return FlashCardWidget(
-        word: widget.lesson.words[index],
-        cardNumber: index + 1,
-        totalCards: wordsCount,
-        onSpeak: _speak,
-      );
-    }
-
-    // Examples (pages wordsCount to wordsCount+examplesCount-1)
-    if (index < storyIndex) {
-      final exampleIndex = index - wordsCount;
-      return ExampleCard(
-        example: widget.lesson.examples[exampleIndex],
-        cardNumber: exampleIndex + 1,
-        totalCards: examplesCount,
-        onSpeak: _speak,
-      );
-    }
-
-    // Story (page storyIndex)
-    if (index == storyIndex) {
-      return StoryCard(
-        story: widget.lesson.story,
-        translation: widget.lesson.storyTranslation,
-        words: widget.lesson.words,
-        onSpeak: _speak,
-      );
-    }
-
-    // Games (pages gamesStartIndex to gamesStartIndex+2)
-    if (index == gamesStartIndex) {
-      // Multiple Choice Game
-      final mcQuestions = widget.lesson.questions
-          .where((q) => q.type == QuestionType.multipleChoice)
-          .toList();
-      if (mcQuestions.isEmpty) {
-        return _buildEmptyGamePlaceholder('Multiple Choice');
-      }
-      return MultipleChoiceGame(
-        questions: mcQuestions,
-        onCorrect: _onAnswerCorrect,
-        onWrong: _onAnswerWrong,
-        onComplete: _goToNextPage,
-      );
-    }
-
-    if (index == gamesStartIndex + 1) {
-      // Matching Game
-      return MatchingGame(
-        words: widget.lesson.words,
-        onCorrect: _onAnswerCorrect,
-        onWrong: _onAnswerWrong,
-        onComplete: _goToNextPage,
-      );
-    }
-
-    if (index == gamesStartIndex + 2) {
-      // Fill Blank Game
-      final fillQuestions = widget.lesson.questions
-          .where((q) => q.type == QuestionType.fillBlank)
-          .toList();
-      if (fillQuestions.isEmpty) {
-        return _buildEmptyGamePlaceholder('Fill in Blank');
-      }
-      return FillBlankGame(
-        questions: fillQuestions,
-        onCorrect: _onAnswerCorrect,
-        onWrong: _onAnswerWrong,
-        onComplete: _goToNextPage,
-      );
-    }
-
-    // Boss Battle (page bossIndex)
-    if (index == bossIndex) {
-      return DragonBoss(
-        words: widget.lesson.words,
-        bossHealth: _bossHealth,
-        playerHealth: _playerHealth,
-        onCorrect: _onAnswerCorrect,
-        onWrong: _onAnswerWrong,
-        onComplete: _goToNextPage,
-        onSpeak: _speak,
-      );
-    }
-
-    // Summary (page summaryIndex)
-    if (index == summaryIndex) {
-      return SummaryCard(
-        score: _score,
-        correctAnswers: _correctAnswers,
-        totalQuestions: _totalQuestions,
-        wordsLearned: widget.lesson.words.length,
-        bossDefeated: _bossHealth <= 0,
-        onFinish: () => Navigator.pop(context),
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildEmptyGamePlaceholder(String gameName) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.games, color: Colors.white54, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              '$gameName sẽ có trong phiên bản tiếp theo!',
-              style: const TextStyle(color: Colors.white54, fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _goToNextPage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00d9ff),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-              ),
-              child: const Text('Tiếp tục'),
-            ),
-          ],
-        ),
       ),
     );
   }

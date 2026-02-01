@@ -27,9 +27,6 @@ class Lesson {
   final String name;
   final int lessonNumber;
   final List<Word> words;
-  final List<Example> examples;
-  final String story; // Truyện chêm
-  final String storyTranslation; // Dịch truyện
   final List<Question> questions;
 
   const Lesson({
@@ -38,9 +35,6 @@ class Lesson {
     required this.name,
     required this.lessonNumber,
     required this.words,
-    required this.examples,
-    required this.story,
-    required this.storyTranslation,
     required this.questions,
   });
 }

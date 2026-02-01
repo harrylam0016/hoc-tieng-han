@@ -198,7 +198,7 @@ class _LessonCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${lesson.words.length} từ mới • ${lesson.examples.length} ví dụ',
+                    '${lesson.words.length} từ mới',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
