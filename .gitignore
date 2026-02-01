@@ -25,5 +25,9 @@ doc/api/
 *.js.deps
 *.js.map
 
+# Android / Kotlin logs
+android/kotlin/errors/
+*.log
+
 .flutter-plugins
 .flutter-plugins-dependencies
