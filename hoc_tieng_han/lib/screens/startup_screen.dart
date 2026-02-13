@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/tts_service.dart';
-import 'topics_list_screen.dart';
+import 'learning_shell_screen.dart';
 
 class StartupScreen extends StatefulWidget {
   const StartupScreen({super.key});
@@ -44,7 +44,7 @@ class _StartupScreenState extends State<StartupScreen> {
 
   void _goToMain() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const TopicsListScreen()),
+      MaterialPageRoute(builder: (_) => const LearningShellScreen()),
     );
   }
 

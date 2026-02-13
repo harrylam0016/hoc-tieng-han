@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/startup_screen.dart';
+import 'screens/learning_shell_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,8 +65,7 @@ class HocTiengHanApp extends StatelessWidget {
           ),
         ),
       ),
-      // Bắt đầu từ StartupScreen để kiểm tra hệ thống
-      home: const StartupScreen(),
+      home: const LearningShellScreen(),
     );
   }
 }

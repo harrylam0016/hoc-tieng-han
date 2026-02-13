@@ -1,24 +1,29 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/topic.dart';
 import '../models/word.dart';
 import '../services/tts_service.dart';
+import '../widgets/flip_card_widget.dart';
 
 /// Loại card trong bài học
 enum CardType { basic, flashText, flashImage }
 
-/// Màn hình học từ vựng
-class LessonScreen extends StatefulWidget {
+/// Nội dung bài học (không có header/bottom — được quản lý bởi LearningShellScreen)
+class LessonContent extends StatefulWidget {
   final Lesson lesson;
+  final void Function(int currentIndex, int totalPages)? onProgressChanged;
 
-  const LessonScreen({super.key, required this.lesson});
+  const LessonContent({
+    super.key,
+    required this.lesson,
+    this.onProgressChanged,
+  });
 
   @override
-  State<LessonScreen> createState() => _LessonScreenState();
+  State<LessonContent> createState() => _LessonContentState();
 }
 
-class _LessonScreenState extends State<LessonScreen> {
+class _LessonContentState extends State<LessonContent> {
   late PageController _pageController;
   final TtsService _tts = TtsService();
   int _currentIndex = 0;
@@ -31,6 +36,10 @@ class _LessonScreenState extends State<LessonScreen> {
     super.initState();
     _pageController = PageController();
     _speakCurrentWord();
+    // Báo progress ban đầu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onProgressChanged?.call(_currentIndex, _totalPages);
+    });
   }
 
   @override
@@ -58,7 +67,6 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   void _speakCurrentWord() {
-    // Chỉ tự động phát âm khi ở Basic Card
     if (_getCardType(_currentIndex) == CardType.basic) {
       if (_tts.isReady && widget.lesson.words.isNotEmpty) {
         final word = _getWordForPage(_currentIndex);
@@ -72,6 +80,7 @@ class _LessonScreenState extends State<LessonScreen> {
       _currentIndex = index;
     });
     _speakCurrentWord();
+    widget.onProgressChanged?.call(index, _totalPages);
   }
 
   void _toggleLike() {
@@ -91,76 +100,58 @@ class _LessonScreenState extends State<LessonScreen> {
     final cardType = _getCardType(_currentIndex);
     final isBasicCard = cardType == CardType.basic;
 
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Layer 0: Blurred background
-          _buildBlurredBackground(word),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background
+        _buildBlurredBackground(word),
 
-          // Layer 1: PageView (full screen, slides behind header & bottom)
-          SafeArea(
-            child: PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              onPageChanged: _onPageChanged,
-              itemCount: _totalPages,
-              itemBuilder: (context, index) {
-                final cardType = _getCardType(index);
-                final word = _getWordForPage(index);
+        // PageView (full screen)
+        SafeArea(
+          child: PageView.builder(
+            controller: _pageController,
+            scrollDirection: Axis.vertical,
+            onPageChanged: _onPageChanged,
+            itemCount: _totalPages,
+            itemBuilder: (context, index) {
+              final cardType = _getCardType(index);
+              final word = _getWordForPage(index);
 
-                switch (cardType) {
-                  case CardType.basic:
-                    return _buildBasicCard(word);
-                  case CardType.flashText:
-                    return _buildFlipCardWithLabel(
-                      FlipCardWidget(
-                        key: ValueKey('flash_text_$index'),
-                        front: _buildFlashTextFront(word),
-                        back: _buildFlashTextBack(word),
-                        onFlip: () => _tts.speak(word.korean),
-                      ),
-                    );
-                  case CardType.flashImage:
-                    return _buildFlipCardWithLabel(
-                      FlipCardWidget(
-                        key: ValueKey('flash_image_$index'),
-                        front: _buildFlashImageFront(word),
-                        back: _buildFlashImageBack(word),
-                        onFlip: () => _tts.speak(word.korean),
-                      ),
-                    );
-                }
-              },
-            ),
+              switch (cardType) {
+                case CardType.basic:
+                  return _buildBasicCard(word);
+                case CardType.flashText:
+                  return _buildFlipCardWithLabel(
+                    FlipCardWidget(
+                      key: ValueKey('flash_text_$index'),
+                      front: _buildFlashTextFront(word),
+                      back: _buildFlashTextBack(word),
+                      onFlip: () => _tts.speak(word.korean),
+                    ),
+                  );
+                case CardType.flashImage:
+                  return _buildFlipCardWithLabel(
+                    FlipCardWidget(
+                      key: ValueKey('flash_image_$index'),
+                      front: _buildFlashImageFront(word),
+                      back: _buildFlashImageBack(word),
+                      onFlip: () => _tts.speak(word.korean),
+                    ),
+                  );
+              }
+            },
           ),
+        ),
 
-          // Layer 2: Header (on top, cards slide behind it)
+        // Action buttons (basic card only)
+        if (isBasicCard)
           Positioned(
+            right: 16,
             top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(bottom: false, child: _buildHeader()),
-          ),
-
-          // Layer 3: Bottom hint (on top, cards slide behind it)
-          Positioned(
             bottom: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(top: false, child: _buildBottomHint()),
+            child: SafeArea(child: Center(child: _buildFixedActionButtons())),
           ),
-
-          // Layer 4: Action buttons (basic card only)
-          if (isBasicCard)
-            Positioned(
-              right: 16,
-              top: 0,
-              bottom: 0,
-              child: SafeArea(child: Center(child: _buildFixedActionButtons())),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -207,82 +198,6 @@ class _LessonScreenState extends State<LessonScreen> {
           child: Container(color: Colors.black.withValues(alpha: 0.5)),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader() {
-    final progress = (_currentIndex + 1) / _totalPages;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildMenuItem('Từ vựng', true),
-                const SizedBox(width: 24),
-                _buildMenuItem('Chữ cái', false),
-                const SizedBox(width: 24),
-                _buildMenuItem('Câu', false),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 120,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF4A90D9),
-                    ),
-                    minHeight: 6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(String text, bool isSelected) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
-        fontSize: 17,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-      ),
     );
   }
 
@@ -366,7 +281,6 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  // Flash Text Card - Front (không có nút, không có text)
   Widget _buildFlashTextFront(Word word) {
     return Container(
       width: 300,
@@ -411,7 +325,6 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  // Flash Text Card - Back (có nút âm thanh icon only)
   Widget _buildFlashTextBack(Word word) {
     return Container(
       width: 300,
@@ -441,7 +354,6 @@ class _LessonScreenState extends State<LessonScreen> {
           ),
           const SizedBox(height: 32),
 
-          // Audio action buttons (icon only)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -454,7 +366,7 @@ class _LessonScreenState extends State<LessonScreen> {
               _buildIconOnlyButton(
                 icon: Icons.slow_motion_video,
                 color: const Color(0xFF4A90D9).withValues(alpha: 0.7),
-                onTap: () => _tts.speak(word.korean, rate: 0.1), // Rất chậm
+                onTap: () => _tts.speak(word.korean, rate: 0.1),
               ),
             ],
           ),
@@ -463,7 +375,6 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  // Flash Image Card - Front (không có nút)
   Widget _buildFlashImageFront(Word word) {
     return Container(
       width: 300,
@@ -503,7 +414,6 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  // Flash Image Card - Back (có nút âm thanh)
   Widget _buildFlashImageBack(Word word) {
     return Container(
       width: 300,
@@ -556,7 +466,6 @@ class _LessonScreenState extends State<LessonScreen> {
           ),
           const SizedBox(height: 32),
 
-          // Audio action buttons (icon only)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -569,7 +478,7 @@ class _LessonScreenState extends State<LessonScreen> {
               _buildIconOnlyButton(
                 icon: Icons.slow_motion_video,
                 color: const Color(0xFF4A90D9).withValues(alpha: 0.7),
-                onTap: () => _tts.speak(word.korean, rate: 0.1), // Rất chậm
+                onTap: () => _tts.speak(word.korean, rate: 0.1),
               ),
             ],
           ),
@@ -630,7 +539,7 @@ class _LessonScreenState extends State<LessonScreen> {
           ),
           onTap: () {
             final word = _getWordForPage(_currentIndex);
-            _tts.speak(word.korean, rate: 0.1); // Rate rất chậm
+            _tts.speak(word.korean, rate: 0.1);
           },
         ),
       ],
@@ -650,112 +559,6 @@ class _LessonScreenState extends State<LessonScreen> {
           shape: BoxShape.circle,
         ),
         child: icon,
-      ),
-    );
-  }
-
-  Widget _buildBottomHint() {
-    if (_currentIndex >= _totalPages - 1) {
-      return const SizedBox(height: 60);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const SizedBox(height: 4),
-          Icon(
-            Icons.keyboard_arrow_up,
-            color: Colors.white.withValues(alpha: 0.6),
-            size: 24,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget Flip Card với animation mượt mà
-class FlipCardWidget extends StatefulWidget {
-  final Widget front;
-  final Widget back;
-  final VoidCallback? onFlip; // Callback khi lật
-
-  const FlipCardWidget({
-    super.key,
-    required this.front,
-    required this.back,
-    this.onFlip,
-  });
-
-  @override
-  State<FlipCardWidget> createState() => _FlipCardWidgetState();
-}
-
-class _FlipCardWidgetState extends State<FlipCardWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  bool _showFront = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _animation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _flip() {
-    if (_showFront) {
-      _controller.forward();
-      // Chỉ gọi callback khi lật sang mặt sau
-      widget.onFlip?.call();
-    } else {
-      _controller.reverse();
-    }
-    setState(() {
-      _showFront = !_showFront;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _flip,
-      child: Center(
-        child: AnimatedBuilder(
-          animation: _animation,
-          builder: (context, child) {
-            final angle = _animation.value * pi;
-            final isFrontVisible = angle < pi / 2;
-
-            return Transform(
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001)
-                ..rotateY(angle),
-              alignment: Alignment.center,
-              child: isFrontVisible
-                  ? widget.front
-                  : Transform(
-                      transform: Matrix4.identity()..rotateY(pi),
-                      alignment: Alignment.center,
-                      child: widget.back,
-                    ),
-            );
-          },
-        ),
       ),
     );
   }

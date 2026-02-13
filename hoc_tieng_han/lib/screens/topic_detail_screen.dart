@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/topic.dart';
-import 'lesson_screen.dart';
+import 'learning_shell_screen.dart';
 
 /// Màn hình chi tiết chủ đề với danh sách các bài học
 class TopicDetailScreen extends StatelessWidget {
@@ -141,7 +141,9 @@ class _LessonCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => LessonScreen(lesson: lesson)),
+          MaterialPageRoute(
+            builder: (context) => LearningShellScreen(initialLesson: lesson),
+          ),
         );
       },
       child: Container(
