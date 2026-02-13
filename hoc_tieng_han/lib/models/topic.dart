@@ -8,6 +8,7 @@ class Topic {
   final String koreanName;
   final String description;
   final String emoji;
+  final String imagePath;
   final List<Lesson> lessons;
 
   const Topic({
@@ -16,6 +17,7 @@ class Topic {
     required this.koreanName,
     required this.description,
     required this.emoji,
+    required this.imagePath,
     required this.lessons,
   });
 }

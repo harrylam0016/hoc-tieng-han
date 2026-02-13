@@ -36,7 +36,7 @@ class TopicSelectionContent extends StatelessWidget {
       child: CustomScrollView(
         slivers: [
           // Top padding for header (menu bar only, no close button)
-          const SliverToBoxAdapter(child: SizedBox(height: 60)),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
           // Build creative grid rows
           ..._buildGridRows(topics),
           // Bottom padding
@@ -219,7 +219,7 @@ class TopicSelectionContent extends StatelessWidget {
               // Image background
               Positioned.fill(
                 child: Image.asset(
-                  'assets/images/drink.webp',
+                  topic.imagePath,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
