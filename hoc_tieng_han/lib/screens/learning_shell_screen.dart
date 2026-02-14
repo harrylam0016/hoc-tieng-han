@@ -309,8 +309,10 @@ class _LearningShellScreenState extends State<LearningShellScreen>
   }
 
   Widget _buildHeader(double progress, bool isInLesson, bool showBackButton) {
-    final isOnLessonPath =
-        _currentView == ShellView.lessonPath && !_isTransitioning;
+    final isDarkText =
+        (_currentView == ShellView.lessonPath ||
+            _currentView == ShellView.topics) &&
+        !_isTransitioning;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -321,38 +323,43 @@ class _LearningShellScreenState extends State<LearningShellScreen>
           Stack(
             alignment: Alignment.center,
             children: [
-              if (showBackButton)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: GestureDetector(
-                    onTap: _onBackPressed,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isOnLessonPath
-                            ? const Color(0xFF3D3D3D).withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_back_ios_new,
-                        color: isOnLessonPath
-                            ? const Color(0xFF3D3D3D)
-                            : Colors.white,
-                        size: 18,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IgnorePointer(
+                  ignoring: !showBackButton,
+                  child: Opacity(
+                    opacity: showBackButton ? 1.0 : 0.0,
+                    child: GestureDetector(
+                      onTap: _onBackPressed,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDarkText
+                              ? const Color(0xFF4A3B32).withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: isDarkText
+                              ? const Color(0xFF4A3B32)
+                              : Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildMenuItem('Từ vựng', 0, isOnLessonPath),
+                  _buildMenuItem('Từ vựng', 0, isDarkText),
                   const SizedBox(width: 24),
-                  _buildMenuItem('Chữ cái', 1, isOnLessonPath),
+                  _buildMenuItem('Chữ cái', 1, isDarkText),
                   const SizedBox(width: 24),
-                  _buildMenuItem('Câu', 2, isOnLessonPath),
+                  _buildMenuItem('Câu', 2, isDarkText),
                 ],
               ),
             ],
@@ -388,8 +395,8 @@ class _LearningShellScreenState extends State<LearningShellScreen>
         style: TextStyle(
           color: isDarkText
               ? (isSelected
-                    ? const Color(0xFF3D3D3D)
-                    : const Color(0xFF3D3D3D).withValues(alpha: 0.4))
+                    ? const Color(0xFF4A3B32)
+                    : const Color(0xFF4A3B32).withValues(alpha: 0.4))
               : (isSelected
                     ? Colors.white
                     : Colors.white.withValues(alpha: 0.5)),

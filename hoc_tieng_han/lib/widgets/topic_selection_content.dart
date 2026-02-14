@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../data/sample_data.dart';
 import '../models/topic.dart';
 
-/// Gradient colors cho mỗi topic card
-const _topicGradients = [
-  [Color(0xFF1B1B2F), Color(0xFF162447)],
-  [Color(0xFF2D132C), Color(0xFF801336)],
-  [Color(0xFF0B3D4A), Color(0xFF1A5276)],
-  [Color(0xFF1A1A2E), Color(0xFF16213E)],
-  [Color(0xFF2C3E50), Color(0xFF4A6274)],
-  [Color(0xFF1F1C2C), Color(0xFF928DAB)],
-  [Color(0xFF0F2027), Color(0xFF203A43)],
-  [Color(0xFF232526), Color(0xFF414345)],
-  [Color(0xFF2B1055), Color(0xFF7597DE)],
-];
+// Palette matches the "Lesson Path" bright beige concept, but adapted for wood texture
+const _kBgColor = Color(0xFFF5E7CD); // Warm Beige (Background)
+const _kMascotBgColor = Color(0xFF3E2723); // Dark brown for mascot circle bg
 
-/// Widget hiển thị danh sách chủ đề dạng creative grid (TikTok style)
+// Birdhouse Palette
+const _kHouseBodyColor = Color(0xFFD7CCC8); // Light wood
+const _kHouseRoofBrown = Color(0xFF795548); // Darker wood (original)
+const _kHouseRoofRed = Color(0xFFC8553D); // Burnt Orange from Lesson Path
+const _kHouseRoofGreen = Color(0xFF7D9B76); // Sage Green from Lesson Path
+const _kHoleColor = Color(0xFF3E2723); // Dark hollow
+const _kNailColor = Color(0xFF5D4037); // Rust/Dark brown
+
 class TopicSelectionContent extends StatelessWidget {
   final void Function(Topic topic) onTopicSelected;
 
@@ -23,147 +22,169 @@ class TopicSelectionContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topics = sampleTopics;
+    return Scaffold(
+      backgroundColor: _kBgColor,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Background Texture (Faint wood planks)
+          CustomPaint(painter: _WoodPlankPainter(), size: Size.infinite),
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1a1a2e), Color(0xFF0f0f1a)],
-        ),
-      ),
-      child: CustomScrollView(
-        slivers: [
-          // Top padding for header (menu bar only, no close button)
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          // Build creative grid rows
-          ..._buildGridRows(topics),
-          // Bottom padding
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildGridRows(List<Topic> topics) {
-    final List<Widget> rows = [];
-    int i = 0;
-    int patternIndex = 0;
-
-    while (i < topics.length) {
-      final remaining = topics.length - i;
-      final pattern = patternIndex % 3;
-
-      switch (pattern) {
-        case 0:
-          // Row pattern A: 3 equal cards
-          if (remaining >= 3) {
-            rows.add(
-              SliverToBoxAdapter(
-                child: _buildRowThreeEqual(
-                  topics[i],
-                  topics[i + 1],
-                  topics[i + 2],
-                  i,
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                // 2. Mascot Header (Scrollable)
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 60), // Space for Shell Header
+                      _buildMascotHeader(),
+                    ],
+                  ),
                 ),
-              ),
-            );
-            i += 3;
-          } else if (remaining == 2) {
-            rows.add(
-              SliverToBoxAdapter(
-                child: _buildRowTwoEqual(topics[i], topics[i + 1], i),
-              ),
-            );
-            i += 2;
-          } else {
-            rows.add(
-              SliverToBoxAdapter(child: _buildRowFeatured(topics[i], i)),
-            );
-            i += 1;
-          }
-          break;
 
-        case 1:
-          // Row pattern B: 1 large + 1 small
-          if (remaining >= 2) {
-            rows.add(
-              SliverToBoxAdapter(
-                child: _buildRowLargeSmall(topics[i], topics[i + 1], i),
-              ),
-            );
-            i += 2;
-          } else {
-            rows.add(
-              SliverToBoxAdapter(child: _buildRowFeatured(topics[i], i)),
-            );
-            i += 1;
-          }
-          break;
-
-        case 2:
-          // Row pattern C: 1 full-width featured card
-          rows.add(SliverToBoxAdapter(child: _buildRowFeatured(topics[i], i)));
-          i += 1;
-          break;
-      }
-      patternIndex++;
-    }
-
-    return rows;
-  }
-
-  // === Row Pattern A: 3 equal cards ===
-  Widget _buildRowThreeEqual(Topic t1, Topic t2, Topic t3, int startIndex) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: Row(
-        children: [
-          Expanded(child: _buildCard(t1, startIndex, height: 200)),
-          const SizedBox(width: 4),
-          Expanded(child: _buildCard(t2, startIndex + 1, height: 200)),
-          const SizedBox(width: 4),
-          Expanded(child: _buildCard(t3, startIndex + 2, height: 200)),
-        ],
-      ),
-    );
-  }
-
-  // === Row Pattern: 2 equal cards ===
-  Widget _buildRowTwoEqual(Topic t1, Topic t2, int startIndex) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: Row(
-        children: [
-          Expanded(child: _buildCard(t1, startIndex, height: 220)),
-          const SizedBox(width: 4),
-          Expanded(child: _buildCard(t2, startIndex + 1, height: 220)),
-        ],
-      ),
-    );
-  }
-
-  // === Row Pattern B: 1 large (2/3) + 1 small (1/3) ===
-  Widget _buildRowLargeSmall(Topic large, Topic small, int startIndex) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: SizedBox(
-        height: 260,
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: _buildCard(large, startIndex, height: 260),
+                // 3. Birdhouse Grid
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 24,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.85, // Taller for house shape
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 32,
+                        ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      return _BirdhouseItem(
+                        topic: sampleTopics[index],
+                        index: index,
+                        onTap: () => onTopicSelected(sampleTopics[index]),
+                      );
+                    }, childCount: sampleTopics.length),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Expanded(
-              flex: 1,
-              child: _buildCard(
-                small,
-                startIndex + 1,
-                height: 260,
-                showBadge: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMascotHeader() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _kMascotBgColor,
+              border: Border.all(color: _kHouseRoofBrown, width: 4),
+              // No shadow
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image.asset(
+                'assets/images/water.webp', // Updated to .webp
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.pets, color: Colors.white, size: 40),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 60,
+            height: 12,
+            decoration: BoxDecoration(
+              color: _kMascotBgColor.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BirdhouseItem extends StatelessWidget {
+  final Topic topic;
+  final int index;
+  final VoidCallback onTap;
+
+  const _BirdhouseItem({
+    required this.topic,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Subtle organic tilt
+    final double rotateAmt = (index % 2 == 0 ? -0.05 : 0.05);
+
+    // Roof Color: Cycle through Brown, Red, Green
+    final colorIndex = index % 3;
+    final roofColor = colorIndex == 0
+        ? _kHouseRoofBrown
+        : (colorIndex == 1 ? _kHouseRoofRed : _kHouseRoofGreen);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.rotationZ(rotateAmt),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // House Shape (Body + Roof)
+            CustomPaint(
+              size: const Size(160, 200),
+              painter: _BirdhousePainter(roofColor: roofColor),
+            ),
+
+            // Entrance Hole & Content
+            Positioned(
+              top: 60, // Below roof
+              child: Column(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _kHoleColor,
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Image.asset(
+                          topic.imagePath,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.star, color: Colors.amber),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Topic Name
+                  Text(
+                    topic.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'PatrickHand',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF4E342E), // Dark wood text
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -171,179 +192,91 @@ class TopicSelectionContent extends StatelessWidget {
       ),
     );
   }
+}
 
-  // === Row Pattern C: Full-width featured card ===
-  Widget _buildRowFeatured(Topic topic, int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      child: _buildCard(topic, index, height: 240, isFeatured: true),
-    );
+class _BirdhousePainter extends CustomPainter {
+  final Color roofColor;
+
+  _BirdhousePainter({required this.roofColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Shadows - Removed per request
+
+    // Body Paint
+    final bodyPaint = Paint()..color = _kHouseBodyColor;
+    final roofPaint = Paint()..color = roofColor;
+    final nailPaint = Paint()..color = _kNailColor;
+
+    // 1. Draw Shadow - Removed
+    // final path = Path()...
+    // canvas.drawPath(path.shift(const Offset(4, 6)), shadowPaint);
+
+    // 2. Draw Body (Rectangle)
+    // Start slightly below roof peak
+    final bodyRect = Rect.fromLTWH(10, 40, w - 20, h - 40);
+    // Draw "planks" on body?
+    canvas.drawRect(bodyRect, bodyPaint);
+
+    // 3. Draw Roof
+    final roofPath = Path();
+    roofPath.moveTo(0, 40);
+    roofPath.lineTo(w / 2, 0);
+    roofPath.lineTo(w, 40);
+    roofPath.lineTo(w - 10, 40); // Overhang return
+    roofPath.lineTo(w / 2, 10); // Inner peak
+    roofPath.lineTo(10, 40);
+    roofPath.close();
+
+    // Fill roof
+    // Actually standard triangle roof looks better
+    final simpleRoof = Path();
+    simpleRoof.moveTo(-10, 45); // Extend past body
+    simpleRoof.lineTo(w / 2, -5);
+    simpleRoof.lineTo(w + 10, 45);
+    simpleRoof.lineTo(w, 45);
+    simpleRoof.lineTo(w / 2, 5);
+    simpleRoof.lineTo(0, 45);
+    simpleRoof.close();
+
+    // Draw main roof triangle
+    final mainRoof = Path();
+    mainRoof.moveTo(-5, 45);
+    mainRoof.lineTo(w / 2, -5);
+    mainRoof.lineTo(w + 5, 45);
+    mainRoof.close();
+    canvas.drawPath(mainRoof, roofPaint);
+
+    // 4. Nails
+    canvas.drawCircle(Offset(20, 55), 3, nailPaint);
+    canvas.drawCircle(Offset(w - 20, 55), 3, nailPaint);
+    canvas.drawCircle(Offset(20, h - 15), 3, nailPaint);
+    canvas.drawCircle(Offset(w - 20, h - 15), 3, nailPaint);
   }
 
-  // === Individual Card ===
-  Widget _buildCard(
-    Topic topic,
-    int index, {
-    required double height,
-    bool isFeatured = false,
-    bool showBadge = false,
-  }) {
-    final gradientColors = _topicGradients[index % _topicGradients.length];
-    final lessonCount = topic.lessons.length;
-    final totalWords = topic.lessons.fold<int>(
-      0,
-      (sum, l) => sum + l.words.length,
-    );
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
-    return GestureDetector(
-      onTap: () => onTopicSelected(topic),
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [gradientColors[0], gradientColors[1]],
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Image background
-              Positioned.fill(
-                child: Image.asset(
-                  topic.imagePath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    );
-                  },
-                ),
-              ),
+// Simple wood plank background
+class _WoodPlankPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Just vertical faint lines
+    final paint = Paint()
+      ..color = Colors.brown.withValues(alpha: 0.1)
+      ..strokeWidth = 2;
 
-              // Dark gradient overlay at bottom
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.7),
-                      ],
-                      stops: const [0.25, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Badge (HOT)
-              if (showBadge)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B35),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'HOT',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Content: name + lesson count
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isFeatured) ...[
-                      Text(
-                        topic.koreanName,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                    ],
-                    Text(
-                      topic.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isFeatured ? 22 : 15,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.menu_book_rounded,
-                          color: Colors.white.withValues(alpha: 0.6),
-                          size: isFeatured ? 15 : 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$lessonCount bài học',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: isFeatured ? 13 : 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (isFeatured) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.4),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$totalWords từ vựng',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    double x = 40;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      x += 80; // Wide planks
+    }
   }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
