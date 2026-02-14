@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/topic.dart';
 
 const _kCardSize = 90.0;
-const _kRowSpacing = 160.0;
+const _kRowSpacing = 200.0;
 const _kHalfCard = _kCardSize / 2;
 
 // ---- Palette based on reference image ----
@@ -413,8 +413,8 @@ class _FunnelPathPainter extends CustomPainter {
     if (dx.abs() < 10) {
       // Connect Bottom of From to Top of To
       return _drawBoneShape(
-        start: Offset(from.dx, from.dy + 25),
-        end: Offset(to.dx, to.dy - 25),
+        start: Offset(from.dx, from.dy + 40),
+        end: Offset(to.dx, to.dy - 40),
         isVertical: true,
       );
     }
@@ -422,8 +422,8 @@ class _FunnelPathPainter extends CustomPainter {
     // 2. Horizontal Connection (Same Y roughly)
     if (dy.abs() < 10) {
       final isRight = to.dx > from.dx;
-      final startX = from.dx + (isRight ? 25 : -25);
-      final endX = to.dx + (isRight ? -25 : 25);
+      final startX = from.dx + (isRight ? 40 : -40);
+      final endX = to.dx + (isRight ? -40 : 40);
 
       return _drawBoneShape(
         start: Offset(startX, from.dy),
@@ -444,9 +444,10 @@ class _FunnelPathPainter extends CustomPainter {
     required bool isVertical,
   }) {
     final path = Path();
-    const wStart = 28.0; // Wide flare at nodes
-    const wMid = 1.0; // Very thin middle line (2px total)
-    const flareLen = 35.0; // Length of the flare curve
+    const wStart = 28.0; // Wide flare (covers ~90% of node)
+    const wMid = 2.0; // Thin middle line (4px total)
+    const flareLen =
+        50.0; // Length of the flare curve (Needs to be long for curve)
 
     if (isVertical) {
       // Points
@@ -503,9 +504,9 @@ class _FunnelPathPainter extends CustomPainter {
       // Flare In (Right)
       path.cubicTo(
         pStartRight.dx,
-        start.dy + flareLen * 0.5, // Control 1: Keep wide
+        start.dy + flareLen * 0.1, // Control 1: Narrow immediately (0.1)
         midStartRight.dx,
-        midStartRight.dy - flareLen * 0.3, // Control 2: Snap thin
+        midStartRight.dy - flareLen * 0.9, // Control 2: Reach thin early (0.9)
         midStartRight.dx,
         midStartRight.dy,
       );
@@ -516,9 +517,9 @@ class _FunnelPathPainter extends CustomPainter {
       // Flare Out (Right)
       path.cubicTo(
         midEndRight.dx,
-        midEndRight.dy + flareLen * 0.3,
+        midEndRight.dy + flareLen * 0.9,
         pEndRight.dx,
-        end.dy - flareLen * 0.5,
+        end.dy - flareLen * 0.1,
         pEndRight.dx,
         pEndRight.dy,
       );
@@ -528,9 +529,9 @@ class _FunnelPathPainter extends CustomPainter {
       // Flare In (Left - Reverse)
       path.cubicTo(
         pEndLeft.dx,
-        end.dy - flareLen * 0.5,
+        end.dy - flareLen * 0.1,
         midEndLeft.dx,
-        midEndLeft.dy + flareLen * 0.3,
+        midEndLeft.dy + flareLen * 0.9,
         midEndLeft.dx,
         midEndLeft.dy,
       );
@@ -540,18 +541,15 @@ class _FunnelPathPainter extends CustomPainter {
       // Flare Out (Left - Reverse)
       path.cubicTo(
         midStartLeft.dx,
-        midStartLeft.dy - flareLen * 0.3,
+        midStartLeft.dy - flareLen * 0.9,
         pStartLeft.dx,
-        start.dy + flareLen * 0.5,
+        start.dy + flareLen * 0.1,
         pStartLeft.dx,
         pStartLeft.dy,
       );
     } else {
       // Horizontal
       final isRight = end.dx > start.dx;
-      // We process left-to-right logic, swap if needed?
-      // Actually standard logic helps.
-      // Flare extends along X axis.
 
       final dist = (end.dx - start.dx).abs();
       if (dist < flareLen * 2) {
@@ -603,9 +601,9 @@ class _FunnelPathPainter extends CustomPainter {
 
       // Top Flare In
       path.cubicTo(
-        start.dx + flareLen * 0.5 * dir,
+        start.dx + flareLen * 0.1 * dir,
         pStartTop.dy, // C1
-        midStartTop.dx - flareLen * 0.3 * dir,
+        midStartTop.dx - flareLen * 0.9 * dir,
         midStartTop.dy, // C2
         midStartTop.dx,
         midStartTop.dy,
@@ -616,9 +614,9 @@ class _FunnelPathPainter extends CustomPainter {
 
       // Top Flare Out
       path.cubicTo(
-        midEndTop.dx + flareLen * 0.3 * dir,
+        midEndTop.dx + flareLen * 0.9 * dir,
         midEndTop.dy, // C1
-        end.dx - flareLen * 0.5 * dir,
+        end.dx - flareLen * 0.1 * dir,
         pEndTop.dy, // C2
         pEndTop.dx,
         pEndTop.dy,
@@ -628,9 +626,9 @@ class _FunnelPathPainter extends CustomPainter {
 
       // Bottom Flare In (Reverse)
       path.cubicTo(
-        end.dx - flareLen * 0.5 * dir,
+        end.dx - flareLen * 0.1 * dir,
         pEndBot.dy,
-        midEndBot.dx + flareLen * 0.3 * dir,
+        midEndBot.dx + flareLen * 0.9 * dir,
         midEndBot.dy,
         midEndBot.dx,
         midEndBot.dy,
@@ -641,9 +639,9 @@ class _FunnelPathPainter extends CustomPainter {
 
       // Bottom Flare Out (Reverse)
       path.cubicTo(
-        midStartBot.dx - flareLen * 0.3 * dir,
+        midStartBot.dx - flareLen * 0.9 * dir,
         midStartBot.dy,
-        start.dx + flareLen * 0.5 * dir,
+        start.dx + flareLen * 0.1 * dir,
         pStartBot.dy,
         pStartBot.dx,
         pStartBot.dy,
