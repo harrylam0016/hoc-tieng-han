@@ -51,8 +51,16 @@ class HocTiengHanApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
-          bodyLarge: TextStyle(fontSize: 18, color: Colors.white),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
+          bodyLarge: TextStyle(
+            fontSize: 18,
+            color: Colors.white,
+            fontWeight: FontWeight.w500, // Roboto Medium
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 16,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500, // Roboto Medium
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
