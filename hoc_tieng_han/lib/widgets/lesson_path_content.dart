@@ -6,7 +6,7 @@ const _kRowSpacing = 200.0;
 const _kHalfCard = _kCardSize / 2;
 
 // ---- Palette based on reference image ----
-const _kBgColor = Color(0xFFF3EFE0); // Cream background
+const _kBgColor = Color(0xFFF5E7CD); // Warm beige background
 const _kActiveColor = Color(0xFFC8553D); // Burnt orange for current topic
 const _kLockedColor = Color(0xFF7D9B76); // Sage green for locked/others
 const _kTextColor = Color(0xFF4A3B32); // Dark brown text
