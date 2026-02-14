@@ -17,9 +17,9 @@ const _topicGradients = [
 
 /// Widget hiển thị danh sách chủ đề dạng creative grid (TikTok style)
 class TopicSelectionContent extends StatelessWidget {
-  final void Function(Lesson lesson) onLessonSelected;
+  final void Function(Topic topic) onTopicSelected;
 
-  const TopicSelectionContent({super.key, required this.onLessonSelected});
+  const TopicSelectionContent({super.key, required this.onTopicSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -196,11 +196,7 @@ class TopicSelectionContent extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () {
-        if (topic.lessons.isNotEmpty) {
-          onLessonSelected(topic.lessons.first);
-        }
-      },
+      onTap: () => onTopicSelected(topic),
       child: Container(
         height: height,
         decoration: BoxDecoration(

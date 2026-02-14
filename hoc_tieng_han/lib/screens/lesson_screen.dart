@@ -12,11 +12,15 @@ enum CardType { basic, flashText, flashImage }
 class LessonContent extends StatefulWidget {
   final Lesson lesson;
   final void Function(int currentIndex, int totalPages)? onProgressChanged;
+  final VoidCallback? onSwipeBackToPath; // Lướt xuống ở trang đầu
+  final VoidCallback? onLessonCompleted; // Lướt lên ở trang cuối
 
   const LessonContent({
     super.key,
     required this.lesson,
     this.onProgressChanged,
+    this.onSwipeBackToPath,
+    this.onLessonCompleted,
   });
 
   @override
@@ -31,12 +35,15 @@ class _LessonContentState extends State<LessonContent> {
 
   int get _totalPages => widget.lesson.words.length * 3;
 
+  // Overscroll tracking
+  bool _overscrollTriggered = false;
+  static const _overscrollThreshold = 40.0;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _speakCurrentWord();
-    // Báo progress ban đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onProgressChanged?.call(_currentIndex, _totalPages);
     });
@@ -94,6 +101,29 @@ class _LessonContentState extends State<LessonContent> {
     });
   }
 
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollStartNotification) {
+      _overscrollTriggered = false;
+    } else if (notification is ScrollUpdateNotification) {
+      if (_overscrollTriggered) return false;
+      final pixels = notification.metrics.pixels;
+      final maxExtent = notification.metrics.maxScrollExtent;
+
+      // Kéo quá đầu
+      if (pixels < -_overscrollThreshold) {
+        _overscrollTriggered = true;
+        widget.onSwipeBackToPath?.call();
+      }
+
+      // Kéo quá cuối
+      if (pixels > maxExtent + _overscrollThreshold) {
+        _overscrollTriggered = true;
+        widget.onLessonCompleted?.call();
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final word = _getWordForPage(_currentIndex);
@@ -106,40 +136,44 @@ class _LessonContentState extends State<LessonContent> {
         // Background
         _buildBlurredBackground(word),
 
-        // PageView (full screen)
+        // PageView with overscroll detection
         SafeArea(
-          child: PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.vertical,
-            onPageChanged: _onPageChanged,
-            itemCount: _totalPages,
-            itemBuilder: (context, index) {
-              final cardType = _getCardType(index);
-              final word = _getWordForPage(index);
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              physics: const BouncingScrollPhysics(),
+              onPageChanged: _onPageChanged,
+              itemCount: _totalPages,
+              itemBuilder: (context, index) {
+                final cardType = _getCardType(index);
+                final word = _getWordForPage(index);
 
-              switch (cardType) {
-                case CardType.basic:
-                  return _buildBasicCard(word);
-                case CardType.flashText:
-                  return _buildFlipCardWithLabel(
-                    FlipCardWidget(
-                      key: ValueKey('flash_text_$index'),
-                      front: _buildFlashTextFront(word),
-                      back: _buildFlashTextBack(word),
-                      onFlip: () => _tts.speak(word.korean),
-                    ),
-                  );
-                case CardType.flashImage:
-                  return _buildFlipCardWithLabel(
-                    FlipCardWidget(
-                      key: ValueKey('flash_image_$index'),
-                      front: _buildFlashImageFront(word),
-                      back: _buildFlashImageBack(word),
-                      onFlip: () => _tts.speak(word.korean),
-                    ),
-                  );
-              }
-            },
+                switch (cardType) {
+                  case CardType.basic:
+                    return _buildBasicCard(word);
+                  case CardType.flashText:
+                    return _buildFlipCardWithLabel(
+                      FlipCardWidget(
+                        key: ValueKey('flash_text_$index'),
+                        front: _buildFlashTextFront(word),
+                        back: _buildFlashTextBack(word),
+                        onFlip: () => _tts.speak(word.korean),
+                      ),
+                    );
+                  case CardType.flashImage:
+                    return _buildFlipCardWithLabel(
+                      FlipCardWidget(
+                        key: ValueKey('flash_image_$index'),
+                        front: _buildFlashImageFront(word),
+                        back: _buildFlashImageBack(word),
+                        onFlip: () => _tts.speak(word.korean),
+                      ),
+                    );
+                }
+              },
+            ),
           ),
         ),
 
