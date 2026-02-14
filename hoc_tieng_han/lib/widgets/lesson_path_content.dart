@@ -35,8 +35,6 @@ class _LessonPathContentState extends State<LessonPathContent>
     with TickerProviderStateMixin {
   late AnimationController _hintController;
   late Animation<double> _hintAnimation;
-  late AnimationController _mascotController;
-  late Animation<double> _mascotBounce;
 
   @override
   void initState() {
@@ -48,20 +46,11 @@ class _LessonPathContentState extends State<LessonPathContent>
     _hintAnimation = Tween<double>(begin: 0, end: -8).animate(
       CurvedAnimation(parent: _hintController, curve: Curves.easeInOut),
     );
-
-    _mascotController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-    _mascotBounce = Tween<double>(begin: 0, end: -6).animate(
-      CurvedAnimation(parent: _mascotController, curve: Curves.easeInOut),
-    );
   }
 
   @override
   void dispose() {
     _hintController.dispose();
-    _mascotController.dispose();
     super.dispose();
   }
 
@@ -120,6 +109,8 @@ class _LessonPathContentState extends State<LessonPathContent>
               ),
             ),
           ),
+
+          Positioned(left: 0, right: 0, bottom: 30, child: _buildHint()),
         ],
       ),
     );
@@ -169,14 +160,6 @@ class _LessonPathContentState extends State<LessonPathContent>
             left: review.dx - _kHalfCard,
             top: review.dy - _kHalfCard,
             child: _buildReviewNode(),
-          ),
-
-          // Swipe Hint
-          Positioned(
-            left: 0,
-            right: 0,
-            top: exam.dy + _kHalfCard + 40,
-            child: _buildHint(),
           ),
         ],
       ),
@@ -234,12 +217,8 @@ class _LessonPathContentState extends State<LessonPathContent>
 
                 // Mascot on Current
                 if (isCurrent)
-                  AnimatedBuilder(
-                    animation: _mascotBounce,
-                    builder: (_, child) => Positioned(
-                      top: -50 + _mascotBounce.value,
-                      child: child!,
-                    ),
+                  Positioned(
+                    top: -35,
                     child: Image.asset(
                       'assets/images/water.webp',
                       width: 50,
@@ -249,16 +228,6 @@ class _LessonPathContentState extends State<LessonPathContent>
                     ),
                   ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Topic ${index + 1}',
-              style: const TextStyle(
-                color: _kTextColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
             ),
           ],
         ),
@@ -286,17 +255,6 @@ class _LessonPathContentState extends State<LessonPathContent>
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Final\nChallenge',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _kTextColor,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              height: 1.2,
-            ),
-          ),
         ],
       ),
     );
@@ -316,15 +274,6 @@ class _LessonPathContentState extends State<LessonPathContent>
             ),
             child: const Center(
               child: Icon(Icons.refresh_rounded, color: _kIconColor, size: 36),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Review',
-            style: TextStyle(
-              color: _kTextColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -351,7 +300,7 @@ class _LessonPathContentState extends State<LessonPathContent>
             size: 36,
           ),
           const Text(
-            'Swipe up to start learning',
+            'Lướt để học',
             style: TextStyle(
               color: _kTextColor,
               fontSize: 14,

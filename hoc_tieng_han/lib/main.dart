@@ -39,7 +39,7 @@ class HocTiengHanApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF1a1a2e),
-        fontFamily: 'Roboto',
+        fontFamily: 'PatrickHand',
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontSize: 32,
