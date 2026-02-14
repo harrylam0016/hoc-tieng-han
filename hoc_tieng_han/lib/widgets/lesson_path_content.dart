@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/topic.dart';
 
-/// Lesson path view — bản đồ học tập với đường đi nối liền các bài học
+const _kCardSize = 90.0;
+const _kRowSpacing = 160.0;
+const _kHalfCard = _kCardSize / 2;
+
+// ---- Palette based on reference image ----
+const _kBgColor = Color(0xFFF3EFE0); // Cream background
+const _kActiveColor = Color(0xFFC8553D); // Burnt orange for current topic
+const _kLockedColor = Color(0xFF7D9B76); // Sage green for locked/others
+const _kTextColor = Color(0xFF4A3B32); // Dark brown text
+const _kIconColor = Color(0xFFF3EFE0); // Cream icon color
+
+/// Lesson path: Funnel/Bone shaped connections
 class LessonPathContent extends StatefulWidget {
   final Topic topic;
-  final int currentLessonIndex; // Bài học hiện tại (mascot đứng ở đây)
+  final int currentLessonIndex;
   final void Function(Lesson lesson) onLessonSelected;
-  final VoidCallback? onSwipeUpToLesson; // Lướt lên để vào bài học
+  final VoidCallback? onSwipeUpToLesson;
 
   const LessonPathContent({
     super.key,
@@ -30,19 +41,17 @@ class _LessonPathContentState extends State<LessonPathContent>
   @override
   void initState() {
     super.initState();
-    // Animation cho mũi tên hint lướt lên
     _hintController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _hintAnimation = Tween<double>(begin: 0, end: -12).animate(
+    _hintAnimation = Tween<double>(begin: 0, end: -8).animate(
       CurvedAnimation(parent: _hintController, curve: Curves.easeInOut),
     );
 
-    // Animation cho mascot nhảy nhẹ
     _mascotController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
     _mascotBounce = Tween<double>(begin: 0, end: -6).animate(
       CurvedAnimation(parent: _mascotController, curve: Curves.easeInOut),
@@ -56,289 +65,236 @@ class _LessonPathContentState extends State<LessonPathContent>
     super.dispose();
   }
 
+  List<Offset> _calcNodes(double w) {
+    // 2-column layout
+    final leftX = w * 0.22;
+    final rightX = w * 0.78;
+    const startY = 80.0;
+
+    final positions = <Offset>[];
+    for (int i = 0; i < widget.topic.lessons.length; i++) {
+      final row = i ~/ 2;
+      final col = i % 2;
+      // Even rows: Left -> Right
+      // Odd rows: Right -> Left
+      final isRowReverse = row % 2 != 0;
+
+      double x;
+      if (!isRowReverse) {
+        x = (col == 0) ? leftX : rightX;
+      } else {
+        x = (col == 0) ? rightX : leftX;
+      }
+
+      positions.add(Offset(x, startY + row * _kRowSpacing));
+    }
+    return positions;
+  }
+
+  Offset _examPos(double w, int rows) =>
+      Offset(w * 0.22, 80.0 + rows * _kRowSpacing);
+  Offset _reviewPos(double w, int rows) =>
+      Offset(w * 0.78, 80.0 + rows * _kRowSpacing);
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onVerticalDragEnd: (details) {
-        // Lướt lên (velocity âm) → vào bài học hiện tại
         if (details.primaryVelocity != null &&
             details.primaryVelocity! < -300) {
           widget.onSwipeUpToLesson?.call();
         }
       },
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8F4EE), Color(0xFFF0EBE3)],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background
+          Container(color: _kBgColor),
+
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 100, bottom: 50),
+              child: LayoutBuilder(
+                builder: (context, constraints) =>
+                    _buildContent(constraints.maxWidth),
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 80, bottom: 100),
-            child: _buildPathLayout(),
-          ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildPathLayout() {
+  Widget _buildContent(double w) {
     final lessons = widget.topic.lessons;
-    final totalLessons = lessons.length;
+    final nodes = _calcNodes(w);
+    final nRows = (lessons.length / 2).ceil();
+    final exam = _examPos(w, nRows);
+    final review = _reviewPos(w, nRows);
+    final h = exam.dy + _kCardSize + 100;
 
-    return Column(
-      children: [
-        // == ROW 1: Lesson 1 (left) ——— Lesson 2 (right) ==
-        if (totalLessons >= 2)
-          _buildTopRow(lessons)
-        else if (totalLessons == 1)
-          _buildSingleNode(lessons[0], 0),
-
-        // == VERTICAL CHAIN: Lesson 3+ (right side) ==
-        if (totalLessons > 2)
-          for (int i = 2; i < totalLessons; i++) ...[
-            _buildVerticalConnector(),
-            _buildRightAlignedNode(lessons[i], i),
-          ],
-
-        // == BOTTOM ROW: connector + Exam/Review ==
-        _buildVerticalConnector(),
-        _buildBottomRow(),
-
-        // == Swipe-up hint ==
-        const SizedBox(height: 40),
-        _buildSwipeHint(),
-      ],
-    );
-  }
-
-  // ===== ROW 1: Lesson 1 — Lesson 2 =====
-  Widget _buildTopRow(List<Lesson> lessons) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Row(
+    return SizedBox(
+      height: h,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Lesson 1 (left)
-          _buildLessonCard(lessons[0], 0),
-          // Horizontal connector
-          Expanded(
-            child: Container(
-              height: 3,
-              margin: const EdgeInsets.only(bottom: 24),
-              color: const Color(0xFFE0D8CC),
+          // Path Painter (Funnel Style)
+          CustomPaint(
+            size: Size(w, h),
+            painter: _FunnelPathPainter(
+              lessonPositions: nodes,
+              examPosition: exam,
+              reviewPosition: review,
+              currentLessonIndex: widget.currentLessonIndex,
             ),
           ),
-          // Lesson 2 (right)
-          _buildLessonCard(lessons[1], 1),
+
+          // Lessons
+          for (int i = 0; i < lessons.length; i++)
+            Positioned(
+              left: nodes[i].dx - _kHalfCard,
+              top: nodes[i].dy - _kHalfCard,
+              child: _buildLessonNode(lessons[i], i),
+            ),
+
+          // Exam Node
+          Positioned(
+            left: exam.dx - _kHalfCard,
+            top: exam.dy - _kHalfCard,
+            child: _buildExamNode(),
+          ),
+
+          // Review Node
+          Positioned(
+            left: review.dx - _kHalfCard,
+            top: review.dy - _kHalfCard,
+            child: _buildReviewNode(),
+          ),
+
+          // Swipe Hint
+          Positioned(
+            left: 0,
+            right: 0,
+            top: exam.dy + _kHalfCard + 40,
+            child: _buildHint(),
+          ),
         ],
       ),
     );
   }
 
-  // ===== Right-aligned node =====
-  Widget _buildRightAlignedNode(Lesson lesson, int index) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 32),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: _buildLessonCard(lesson, index),
-      ),
-    );
-  }
-
-  // ===== Single node (center) =====
-  Widget _buildSingleNode(Lesson lesson, int index) {
-    return Center(child: _buildLessonCard(lesson, index));
-  }
-
-  // ===== Vertical connector =====
-  Widget _buildVerticalConnector() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 32),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: SizedBox(
-          width: 76,
-          height: 50,
-          child: Center(
-            child: Container(
-              width: 3,
-              height: 50,
-              color: const Color(0xFFE0D8CC),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ===== Bottom row: Exam (left) — Review (right) =====
-  Widget _buildBottomRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Row(
-        children: [
-          // Exam (left)
-          _buildExamNode(),
-          // Horizontal connector
-          Expanded(
-            child: Container(
-              height: 3,
-              margin: const EdgeInsets.only(bottom: 24),
-              color: const Color(0xFFE0D8CC),
-            ),
-          ),
-          // Review (right)
-          _buildReviewNode(),
-        ],
-      ),
-    );
-  }
-
-  // ===== Lesson Card =====
-  Widget _buildLessonCard(Lesson lesson, int index) {
+  Widget _buildLessonNode(Lesson lesson, int index) {
     final isCurrent = index == widget.currentLessonIndex;
-    final isUnlocked = index <= widget.currentLessonIndex;
-    final isCompleted = index < widget.currentLessonIndex;
+    final isLocked = index > widget.currentLessonIndex;
+    final color = isCurrent ? _kActiveColor : _kLockedColor;
 
     return GestureDetector(
-      onTap: isUnlocked ? () => widget.onLessonSelected(lesson) : null,
+      onTap: !isLocked ? () => widget.onLessonSelected(lesson) : null,
+      child: SizedBox(
+        width: _kCardSize,
+        child: Column(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // Node Shape
+                Container(
+                  width: _kCardSize,
+                  height: _kCardSize,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Center(
+                    child: isCurrent
+                        ? const Icon(
+                            Icons.play_arrow_rounded,
+                            color: _kIconColor,
+                            size: 44,
+                          )
+                        : !isLocked
+                        // Completed
+                        ? Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: _kIconColor.withValues(alpha: 0.9),
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        // Locked
+                        : const Icon(
+                            Icons.lock_rounded,
+                            color: _kIconColor,
+                            size: 32,
+                          ),
+                  ),
+                ),
+
+                // Mascot on Current
+                if (isCurrent)
+                  AnimatedBuilder(
+                    animation: _mascotBounce,
+                    builder: (_, child) => Positioned(
+                      top: -50 + _mascotBounce.value,
+                      child: child!,
+                    ),
+                    child: Image.asset(
+                      'assets/images/water.webp',
+                      width: 50,
+                      height: 50,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Topic ${index + 1}',
+              style: const TextStyle(
+                color: _kTextColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExamNode() {
+    return SizedBox(
+      width: _kCardSize,
       child: Column(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              // Card chính
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  color: isCurrent
-                      ? const Color(0xFF8B7AE8)
-                      : isCompleted
-                      ? Colors.white
-                      : const Color(0xFFF0EBE3),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isCurrent
-                        ? const Color(0xFF7B68EE)
-                        : isCompleted
-                        ? const Color(0xFF7B68EE).withValues(alpha: 0.5)
-                        : const Color(0xFFD8D0C4),
-                    width: isCurrent ? 3 : 2,
-                  ),
-                  boxShadow: isCurrent
-                      ? [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF7B68EE,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                ),
-                child: Center(
-                  child: isCurrent
-                      ? const Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 36,
-                        )
-                      : isCompleted
-                      ? Text(
-                          '${index + 1}',
-                          style: const TextStyle(
-                            color: Color(0xFF7B68EE),
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        )
-                      : Icon(
-                          Icons.lock_rounded,
-                          color: Colors.grey.shade400,
-                          size: 26,
-                        ),
-                ),
+          Container(
+            width: _kCardSize,
+            height: _kCardSize,
+            decoration: BoxDecoration(
+              color: _kLockedColor,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.emoji_events_rounded,
+                color: _kIconColor,
+                size: 36,
               ),
-
-              // Mascot water (chỉ ở bài hiện tại)
-              if (isCurrent)
-                AnimatedBuilder(
-                  animation: _mascotBounce,
-                  builder: (context, child) {
-                    return Positioned(
-                      top: -52 + _mascotBounce.value,
-                      child: child!,
-                    );
-                  },
-                  child: Image.asset(
-                    'assets/images/water.webp',
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.water_drop,
-                        size: 36,
-                        color: Color(0xFF7B68EE),
-                      );
-                    },
-                  ),
-                ),
-
-              // Badge (ở bài hiện tại)
-              if (isCurrent)
-                Positioned(
-                  top: -8,
-                  right: -8,
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFAA33),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFAA33).withValues(alpha: 0.4),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${lesson.words.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Lesson ${index + 1}',
+          const Text(
+            'Final\nChallenge',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: isUnlocked
-                  ? const Color(0xFF4A4A4A)
-                  : Colors.grey.shade400,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+              color: _kTextColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
             ),
           ),
         ],
@@ -346,115 +302,358 @@ class _LessonPathContentState extends State<LessonPathContent>
     );
   }
 
-  // ===== Exam Node =====
-  Widget _buildExamNode() {
-    return Column(
-      children: [
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
-            ),
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFE8D5A0), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFB300).withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.emoji_events_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Exam',
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===== Review Node =====
   Widget _buildReviewNode() {
-    return Column(
-      children: [
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0EBE3),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD8D0C4), width: 2),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.refresh_rounded,
-              color: Colors.grey.shade400,
-              size: 26,
+    return SizedBox(
+      width: _kCardSize,
+      child: Column(
+        children: [
+          Container(
+            width: _kCardSize,
+            height: _kCardSize,
+            decoration: BoxDecoration(
+              color: _kLockedColor,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: const Center(
+              child: Icon(Icons.refresh_rounded, color: _kIconColor, size: 36),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Review',
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+          const SizedBox(height: 8),
+          const Text(
+            'Review',
+            style: TextStyle(
+              color: _kTextColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // ===== Swipe-up hint =====
-  Widget _buildSwipeHint() {
+  Widget _buildHint() {
     if (widget.currentLessonIndex >= widget.topic.lessons.length) {
       return const SizedBox.shrink();
     }
     return AnimatedBuilder(
       animation: _hintAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _hintAnimation.value),
-          child: child,
-        );
-      },
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, _hintAnimation.value),
+        child: child,
+      ),
       child: Column(
         children: [
+          // Origami-like icon or chevron
           Icon(
             Icons.keyboard_arrow_up_rounded,
-            color: const Color(0xFF7B68EE).withValues(alpha: 0.6),
-            size: 32,
+            color: _kTextColor.withValues(alpha: 0.6),
+            size: 36,
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Lướt lên để bắt đầu học',
+          const Text(
+            'Swipe up to start learning',
             style: TextStyle(
-              color: const Color(0xFF7B68EE).withValues(alpha: 0.6),
-              fontSize: 13,
+              color: _kTextColor,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _FunnelPathPainter extends CustomPainter {
+  final List<Offset> lessonPositions;
+  final Offset examPosition;
+  final Offset reviewPosition;
+  final int currentLessonIndex;
+
+  _FunnelPathPainter({
+    required this.lessonPositions,
+    required this.examPosition,
+    required this.reviewPosition,
+    required this.currentLessonIndex,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (lessonPositions.isEmpty) return;
+
+    final allNodes = [...lessonPositions, examPosition, reviewPosition];
+    // Fill style for the funnel shapes
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < allNodes.length - 1; i++) {
+      final start = allNodes[i];
+      final end = allNodes[i + 1];
+
+      // Color depends on start logic
+      Color color = _kLockedColor;
+      if (i == currentLessonIndex) {
+        color = _kActiveColor;
+      }
+      paint.color = color;
+
+      final path = _buildFunnelPath(start, end);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  Path _buildFunnelPath(Offset from, Offset to) {
+    // Config:
+
+    final dx = to.dx - from.dx;
+    final dy = to.dy - from.dy;
+
+    final path = Path(); // Used for fallback
+
+    // 1. Vertical Connection (Same X)
+    if (dx.abs() < 10) {
+      // Connect Bottom of From to Top of To
+      return _drawBoneShape(
+        start: Offset(from.dx, from.dy + 25),
+        end: Offset(to.dx, to.dy - 25),
+        isVertical: true,
+      );
+    }
+
+    // 2. Horizontal Connection (Same Y roughly)
+    if (dy.abs() < 10) {
+      final isRight = to.dx > from.dx;
+      final startX = from.dx + (isRight ? 25 : -25);
+      final endX = to.dx + (isRight ? -25 : 25);
+
+      return _drawBoneShape(
+        start: Offset(startX, from.dy),
+        end: Offset(endX, to.dy),
+        isVertical: false,
+      );
+    }
+
+    // 3. Diagonal/S-Curve fallback (should rarely happen with this layout)
+    path.moveTo(from.dx, from.dy);
+    path.lineTo(to.dx, to.dy);
+    return path;
+  }
+
+  Path _drawBoneShape({
+    required Offset start,
+    required Offset end,
+    required bool isVertical,
+  }) {
+    final path = Path();
+    const wStart = 28.0; // Wide flare at nodes
+    const wMid = 1.0; // Very thin middle line (2px total)
+    const flareLen = 35.0; // Length of the flare curve
+
+    if (isVertical) {
+      // Points
+      final dist = (end.dy - start.dy).abs();
+      // If distance is too short, just do simple bezier
+      if (dist < flareLen * 2) {
+        // Fallback to simple shape if nodes are too close
+        final pTopLeft = Offset(start.dx - wStart, start.dy);
+        final pTopRight = Offset(start.dx + wStart, start.dy);
+        final pBotRight = Offset(end.dx + wStart, end.dy);
+        final pBotLeft = Offset(end.dx - wStart, end.dy);
+        final midY = (start.dy + end.dy) / 2;
+
+        path.moveTo(pTopLeft.dx, pTopLeft.dy);
+        path.lineTo(pTopRight.dx, pTopRight.dy);
+        path.cubicTo(
+          start.dx + wMid,
+          midY - 10,
+          end.dx + wMid,
+          midY + 10,
+          pBotRight.dx,
+          pBotRight.dy,
+        );
+        path.lineTo(pBotLeft.dx, pBotLeft.dy);
+        path.cubicTo(
+          end.dx - wMid,
+          midY + 10,
+          start.dx - wMid,
+          midY - 10,
+          pTopLeft.dx,
+          pTopLeft.dy,
+        );
+        path.close();
+        return path;
+      }
+
+      // Vertical flared Line
+      final pStartLeft = Offset(start.dx - wStart, start.dy);
+      final pStartRight = Offset(start.dx + wStart, start.dy);
+
+      final pEndRight = Offset(end.dx + wStart, end.dy);
+      final pEndLeft = Offset(end.dx - wStart, end.dy);
+
+      // Mid Points (Thin straight segment)
+      final midStartLeft = Offset(start.dx - wMid, start.dy + flareLen);
+      final midStartRight = Offset(start.dx + wMid, start.dy + flareLen);
+
+      final midEndRight = Offset(end.dx + wMid, end.dy - flareLen);
+      final midEndLeft = Offset(end.dx - wMid, end.dy - flareLen);
+
+      path.moveTo(pStartLeft.dx, pStartLeft.dy);
+      path.lineTo(pStartRight.dx, pStartRight.dy);
+
+      // Flare In (Right)
+      path.cubicTo(
+        pStartRight.dx,
+        start.dy + flareLen * 0.5, // Control 1: Keep wide
+        midStartRight.dx,
+        midStartRight.dy - flareLen * 0.3, // Control 2: Snap thin
+        midStartRight.dx,
+        midStartRight.dy,
+      );
+
+      // Straight Line
+      path.lineTo(midEndRight.dx, midEndRight.dy);
+
+      // Flare Out (Right)
+      path.cubicTo(
+        midEndRight.dx,
+        midEndRight.dy + flareLen * 0.3,
+        pEndRight.dx,
+        end.dy - flareLen * 0.5,
+        pEndRight.dx,
+        pEndRight.dy,
+      );
+
+      path.lineTo(pEndLeft.dx, pEndLeft.dy);
+
+      // Flare In (Left - Reverse)
+      path.cubicTo(
+        pEndLeft.dx,
+        end.dy - flareLen * 0.5,
+        midEndLeft.dx,
+        midEndLeft.dy + flareLen * 0.3,
+        midEndLeft.dx,
+        midEndLeft.dy,
+      );
+
+      path.lineTo(midStartLeft.dx, midStartLeft.dy);
+
+      // Flare Out (Left - Reverse)
+      path.cubicTo(
+        midStartLeft.dx,
+        midStartLeft.dy - flareLen * 0.3,
+        pStartLeft.dx,
+        start.dy + flareLen * 0.5,
+        pStartLeft.dx,
+        pStartLeft.dy,
+      );
+    } else {
+      // Horizontal
+      final isRight = end.dx > start.dx;
+      // We process left-to-right logic, swap if needed?
+      // Actually standard logic helps.
+      // Flare extends along X axis.
+
+      final dist = (end.dx - start.dx).abs();
+      if (dist < flareLen * 2) {
+        // Fallback simple
+        final pStartTop = Offset(start.dx, start.dy - wStart);
+        final pStartBot = Offset(start.dx, start.dy + wStart);
+        final pEndBot = Offset(end.dx, end.dy + wStart);
+        final pEndTop = Offset(end.dx, end.dy - wStart);
+        final midX = (start.dx + end.dx) / 2;
+
+        path.moveTo(pStartTop.dx, pStartTop.dy);
+        path.cubicTo(
+          midX - 10,
+          start.dy - wMid,
+          midX + 10,
+          end.dy - wMid,
+          pEndTop.dx,
+          pEndTop.dy,
+        );
+        path.lineTo(pEndBot.dx, pEndBot.dy);
+        path.cubicTo(
+          midX + 10,
+          end.dy + wMid,
+          midX - 10,
+          start.dy + wMid,
+          pStartBot.dx,
+          pStartBot.dy,
+        );
+        path.close();
+        return path;
+      }
+
+      // Horizontal Flared Line
+      final pStartTop = Offset(start.dx, start.dy - wStart);
+      final pStartBot = Offset(start.dx, start.dy + wStart);
+      final pEndBot = Offset(end.dx, end.dy + wStart);
+      final pEndTop = Offset(end.dx, end.dy - wStart);
+
+      // Determine direction for flare offset
+      final dir = isRight ? 1.0 : -1.0;
+
+      final midStartTop = Offset(start.dx + flareLen * dir, start.dy - wMid);
+      final midStartBot = Offset(start.dx + flareLen * dir, start.dy + wMid);
+
+      final midEndTop = Offset(end.dx - flareLen * dir, end.dy - wMid);
+      final midEndBot = Offset(end.dx - flareLen * dir, end.dy + wMid);
+
+      path.moveTo(pStartTop.dx, pStartTop.dy);
+
+      // Top Flare In
+      path.cubicTo(
+        start.dx + flareLen * 0.5 * dir,
+        pStartTop.dy, // C1
+        midStartTop.dx - flareLen * 0.3 * dir,
+        midStartTop.dy, // C2
+        midStartTop.dx,
+        midStartTop.dy,
+      );
+
+      // Top Straight Line
+      path.lineTo(midEndTop.dx, midEndTop.dy);
+
+      // Top Flare Out
+      path.cubicTo(
+        midEndTop.dx + flareLen * 0.3 * dir,
+        midEndTop.dy, // C1
+        end.dx - flareLen * 0.5 * dir,
+        pEndTop.dy, // C2
+        pEndTop.dx,
+        pEndTop.dy,
+      );
+
+      path.lineTo(pEndBot.dx, pEndBot.dy);
+
+      // Bottom Flare In (Reverse)
+      path.cubicTo(
+        end.dx - flareLen * 0.5 * dir,
+        pEndBot.dy,
+        midEndBot.dx + flareLen * 0.3 * dir,
+        midEndBot.dy,
+        midEndBot.dx,
+        midEndBot.dy,
+      );
+
+      // Bottom Straight Line
+      path.lineTo(midStartBot.dx, midStartBot.dy);
+
+      // Bottom Flare Out (Reverse)
+      path.cubicTo(
+        midStartBot.dx - flareLen * 0.3 * dir,
+        midStartBot.dy,
+        start.dx + flareLen * 0.5 * dir,
+        pStartBot.dy,
+        pStartBot.dx,
+        pStartBot.dy,
+      );
+    }
+
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

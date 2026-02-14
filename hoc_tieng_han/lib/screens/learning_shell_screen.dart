@@ -330,7 +330,7 @@ class _LearningShellScreenState extends State<LearningShellScreen>
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isOnLessonPath
-                            ? const Color(0xFF3D3D3D).withValues(alpha: 0.1)
+                            ? const Color(0xFF3D3D3D).withValues(alpha: 0.08)
                             : Colors.black.withValues(alpha: 0.3),
                         shape: BoxShape.circle,
                       ),
