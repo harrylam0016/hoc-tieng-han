@@ -311,7 +311,8 @@ class _LearningShellScreenState extends State<LearningShellScreen>
   Widget _buildHeader(double progress, bool isInLesson, bool showBackButton) {
     final isDarkText =
         (_currentView == ShellView.lessonPath ||
-            _currentView == ShellView.topics) &&
+            _currentView == ShellView.topics ||
+            _currentView == ShellView.lesson) &&
         !_isTransitioning;
 
     return Padding(
@@ -333,11 +334,9 @@ class _LearningShellScreenState extends State<LearningShellScreen>
                       onTap: _onBackPressed,
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDarkText
-                              ? const Color(0xFF4A3B32).withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.3),
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
+                          // No background
                         ),
                         child: Icon(
                           Icons.arrow_back_ios_new,
@@ -372,9 +371,11 @@ class _LearningShellScreenState extends State<LearningShellScreen>
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  backgroundColor: const Color(
+                    0xFF4A3B32,
+                  ).withValues(alpha: 0.2),
                   valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFF4A90D9),
+                    Color(0xFF795548), // Brown color
                   ),
                   minHeight: 6,
                 ),

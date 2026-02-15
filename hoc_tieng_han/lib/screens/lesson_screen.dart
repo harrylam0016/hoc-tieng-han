@@ -1,9 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/topic.dart';
 import '../models/word.dart';
 import '../services/tts_service.dart';
 import '../widgets/flip_card_widget.dart';
+
+const _kBgColor = Color(0xFFF5E7CD); // Warm beige background (Lesson Path sync)
+const _kTextColor = Color(0xFF4A3B32); // Dark brown text
 
 /// Loại card trong bài học
 enum CardType { basic, flashText, flashImage }
@@ -198,7 +200,7 @@ class _LessonContentState extends State<LessonContent> {
         Text(
           'Chạm để lật',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: _kTextColor.withValues(alpha: 0.6),
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 1,
@@ -209,30 +211,7 @@ class _LessonContentState extends State<LessonContent> {
   }
 
   Widget _buildBlurredBackground(Word word) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          word.imagePath,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF2d1f3d), Color(0xFF1a1a2e)],
-                ),
-              ),
-            );
-          },
-        ),
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(color: Colors.black.withValues(alpha: 0.5)),
-        ),
-      ],
-    );
+    return Container(color: _kBgColor);
   }
 
   Widget _buildBasicCard(Word word) {
@@ -244,16 +223,10 @@ class _LessonContentState extends State<LessonContent> {
           Container(
             width: 220,
             height: 220,
+
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _kTextColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
@@ -277,7 +250,7 @@ class _LessonContentState extends State<LessonContent> {
           Text(
             word.korean,
             style: const TextStyle(
-              color: Colors.white,
+              color: _kTextColor,
               fontSize: 44,
               fontWeight: FontWeight.bold,
               letterSpacing: 2,
@@ -288,7 +261,7 @@ class _LessonContentState extends State<LessonContent> {
           Text(
             word.romanization,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: _kTextColor.withValues(alpha: 0.7),
               fontSize: 18,
               fontStyle: FontStyle.italic,
             ),
@@ -298,14 +271,14 @@ class _LessonContentState extends State<LessonContent> {
           Container(
             width: 80,
             height: 1,
-            color: Colors.white.withValues(alpha: 0.3),
+            color: _kTextColor.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 14),
 
           Text(
             word.vietnamese,
             style: const TextStyle(
-              color: Colors.white,
+              color: _kTextColor,
               fontSize: 22,
               fontWeight: FontWeight.w500,
             ),
@@ -549,7 +522,7 @@ class _LessonContentState extends State<LessonContent> {
         _buildActionButton(
           icon: Icon(
             isLiked ? Icons.favorite : Icons.favorite_border,
-            color: isLiked ? Colors.red : Colors.white,
+            color: isLiked ? Colors.red : _kTextColor,
             size: 28,
           ),
           onTap: _toggleLike,
@@ -557,7 +530,7 @@ class _LessonContentState extends State<LessonContent> {
         const SizedBox(height: 28),
 
         _buildActionButton(
-          icon: const Icon(Icons.volume_up, color: Colors.white, size: 28),
+          icon: Icon(Icons.volume_up, color: _kTextColor, size: 28),
           onTap: () {
             final word = _getWordForPage(_currentIndex);
             _tts.speak(word.korean);
@@ -568,7 +541,7 @@ class _LessonContentState extends State<LessonContent> {
         _buildActionButton(
           icon: const Icon(
             Icons.slow_motion_video,
-            color: Colors.white,
+            color: _kTextColor,
             size: 28,
           ),
           onTap: () {
@@ -588,9 +561,9 @@ class _LessonContentState extends State<LessonContent> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.3),
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
+          // No background
         ),
         child: icon,
       ),
